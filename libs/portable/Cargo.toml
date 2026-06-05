@@ -27,9 +27,9 @@ native-windows-gui = {version = "1.0", default-features = false, features = ["an
 
 [package.metadata.winres]
 LegalCopyright = "Copyright © 2026 GSPComms. All rights reserved."
-ProductName = "GSP Soporte"
+ProductName = "GSPSoporte"
 OriginalFilename = "gspsoporte.exe"
-FileDescription = "GSP Soporte - Escritorio Remoto"
+FileDescription = "GSPSoporte - Escritorio Remoto"
 #ProductVersion = ""
 
 [target.'cfg(target_os="windows")'.build-dependencies]

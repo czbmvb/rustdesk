@@ -3690,9 +3690,9 @@ Color? disabledTextColor(BuildContext context, bool enabled) {
 }
 
 Widget loadPowered(BuildContext context) {
-  if (bind.mainGetBuildinOption(key: "hide-powered-by-me") == 'Y') {
-    return SizedBox.shrink();
-  }
+  // GSPCOMS: ocultar siempre "Con tecnología de RustDesk"
+  return SizedBox.shrink();
+  // ignore: dead_code
   return MouseRegion(
     cursor: SystemMouseCursors.click,
     child: GestureDetector(
