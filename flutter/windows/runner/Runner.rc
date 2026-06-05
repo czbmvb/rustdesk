@@ -92,9 +92,9 @@ BEGIN
             VALUE "CompanyName", "GSPComms" "\0"
             VALUE "FileDescription", "GSP Soporte - Escritorio Remoto" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "rustdesk" "\0"
+            VALUE "InternalName", "gspsoporte" "\0"
             VALUE "LegalCopyright", "Copyright © 2026 GSPComms. All rights reserved." "\0"
-            VALUE "OriginalFilename", "rustdesk.exe" "\0"
+            VALUE "OriginalFilename", "gspsoporte.exe" "\0"
             VALUE "ProductName", "GSP Soporte" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
