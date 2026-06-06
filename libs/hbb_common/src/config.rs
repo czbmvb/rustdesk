@@ -118,7 +118,7 @@ const CHARS: &[char] = &[
 ];
 
 pub const RENDEZVOUS_SERVERS: &[&str] = &["soporte.gspcoms.net"];
-pub const RS_PUB_KEY: &str = "8YfLG5zbRks4CsdJ5VzhIpSr9MHVa2";
+pub const RS_PUB_KEY: &str = "mrPG16cN+ffmuA42TikrG6cbSnpLfce+HCUqmE8UGso=";
 
 pub const RENDEZVOUS_PORT: i32 = 21116;
 pub const RELAY_PORT: i32 = 21117;
