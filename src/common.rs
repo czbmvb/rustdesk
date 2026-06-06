@@ -1937,48 +1937,17 @@ pub fn check_process(arg: &str, mut same_uid: bool) -> bool {
 }
 
 async fn secure_tcp_impl(conn: &mut Stream, key: &str, log_on_success: bool) -> ResultType<()> {
-    // Skip additional encryption when using WebSocket connections (wss://)
-    // as WebSocket Secure (wss://) already provides transport layer encryption.
-    // This doesn't affect the end-to-end encryption between clients,
-    // it only avoids redundant encryption between client and server.
-    if use_ws() {
-        return Ok(());
-    }
-    let rs_pk = get_rs_pk(key);
-    let Some(rs_pk) = rs_pk else {
-        bail!("Handshake failed: invalid public key from rendezvous server");
-    };
-    match timeout(READ_TIMEOUT, conn.next()).await? {
-        Some(Ok(bytes)) => {
-            if let Ok(msg_in) = RendezvousMessage::parse_from_bytes(&bytes) {
-                match msg_in.union {
-                    Some(rendezvous_message::Union::KeyExchange(ex)) => {
-                        if ex.keys.len() != 1 {
-                            bail!("Handshake failed: invalid key exchange message");
-                        }
-                        let their_pk_b = sign::verify(&ex.keys[0], &rs_pk)
-                            .map_err(|_| anyhow!("Signature mismatch in key exchange"))?;
-                        let (asymmetric_value, symmetric_value, key) = create_symmetric_key_msg(
-                            get_pk(&their_pk_b)
-                                .context("Wrong their public length in key exchange")?,
-                        );
-                        let mut msg_out = RendezvousMessage::new();
-                        msg_out.set_key_exchange(KeyExchange {
-                            keys: vec![asymmetric_value, symmetric_value],
-                            ..Default::default()
-                        });
-                        timeout(CONNECT_TIMEOUT, conn.send(&msg_out)).await??;
-                        conn.set_key(key);
-                        if log_on_success {
-                            log::info!("Connection secured");
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-        _ => {}
-    }
+    // GSPSoporte: el "secure tcp" con el servidor rendezvous (handshake KeyExchange
+    // firmado) es una funcion de RustDesk PRO. El servidor OSS (hbbs) NO lo
+    // implementa: nunca envia el mensaje KeyExchange, asi que el cliente se quedaba
+    // esperando hasta el timeout con "Failed to secure tcp: deadline has elapsed"
+    // en CUALQUIER conexion al rendezvous estando logueado (registro tcp,
+    // request-relay y health-check). Lo omitimos por completo.
+    //
+    // IMPORTANTE: esto NO afecta el cifrado extremo-a-extremo entre los dos
+    // equipos (eso usa un intercambio de llaves distinto en la sesion real con la
+    // KEY publica horneada). Solo se evita la capa extra (Pro) cliente<->rendezvous.
+    let _ = (conn, key, log_on_success);
     Ok(())
 }
 
