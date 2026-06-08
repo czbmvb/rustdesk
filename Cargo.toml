@@ -4,7 +4,7 @@ version = "1.4.7"
 authors = ["rustdesk <info@rustdesk.com>"]
 edition = "2021"
 build= "build.rs"
-description = "RustDesk Remote Desktop"
+description = "GSPSoporte Remote Support"
 default-run = "rustdesk"
 rust-version = "1.75"
 
@@ -213,9 +213,9 @@ exclude = ["vdi/host", "examples/custom_plugin"]
 libxdo-sys = { path = "libs/libxdo-sys-stub" }
 
 [package.metadata.winres]
-LegalCopyright = "Copyright © 2025 Purslane Ltd. All rights reserved."
-ProductName = "RustDesk"
-FileDescription = "RustDesk Remote Desktop"
+LegalCopyright = "Copyright © 2026 GSPCOMS. Todos los derechos reservados."
+ProductName = "GSPSoporte"
+FileDescription = "GSPSoporte Remote Support"
 OriginalFilename = "rustdesk.exe"
 
 [target.'cfg(target_os="windows")'.build-dependencies]

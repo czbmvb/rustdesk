@@ -2335,17 +2335,12 @@ async fn stun_ipv4_test(stun_server: &str) -> ResultType<(SocketAddr, String)> {
     })
 }
 
-static STUNS_V4: [&str; 3] = [
-    "stun.l.google.com:19302",
-    "stun.cloudflare.com:3478",
-    "stun.nextcloud.com:3478",
-];
+// GSPSoporte: STUN apuntando SOLO a nuestra infraestructura (cero contacto a
+// Google/Cloudflare/Nextcloud). El UDP/IPv6-punch esta desactivado por defecto;
+// si se activara, intenta nuestro host y si no, cae al relay. Sin fugas externas.
+static STUNS_V4: [&str; 1] = ["soporte.gspcoms.net:3478"];
 
-static STUNS_V6: [&str; 3] = [
-    "stun.l.google.com:19302",
-    "stun.cloudflare.com:3478",
-    "stun.nextcloud.com:3478",
-];
+static STUNS_V6: [&str; 1] = ["soporte.gspcoms.net:3478"];
 
 pub async fn test_nat_ipv4() -> ResultType<(SocketAddr, String)> {
     use hbb_common::futures::future::{select_ok, FutureExt};

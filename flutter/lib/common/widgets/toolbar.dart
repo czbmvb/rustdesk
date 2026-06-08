@@ -456,11 +456,12 @@ List<TTextMenu> toolbarControls(BuildContext context, String id, FFI ffi) {
           child: Text(translate('Transfer file')),
           onPressed: () => connectWithToken(isFileTransfer: true)),
     );
-    v.add(
-      TTextMenu(
-          child: Text(translate('View camera')),
-          onPressed: () => connectWithToken(isViewCamera: true)),
-    );
+    // GSPSoporte: sin video/camara
+    // v.add(
+    //   TTextMenu(
+    //       child: Text(translate('View camera')),
+    //       onPressed: () => connectWithToken(isViewCamera: true)),
+    // );
     v.add(
       TTextMenu(
           child: Text('${translate('Terminal')} (beta)'),

@@ -969,7 +969,7 @@ class RecentPeerCard extends BasePeerCard {
     final List<MenuEntryBase<String>> menuItems = [
       _connectAction(context),
       _transferFileAction(context),
-      _viewCameraAction(context),
+      // _viewCameraAction(context), // GSPSoporte: sin video/camara
       _terminalAction(context),
     ];
 
@@ -1034,7 +1034,7 @@ class FavoritePeerCard extends BasePeerCard {
     final List<MenuEntryBase<String>> menuItems = [
       _connectAction(context),
       _transferFileAction(context),
-      _viewCameraAction(context),
+      // _viewCameraAction(context), // GSPSoporte: sin video/camara
       _terminalAction(context),
     ];
 
@@ -1094,7 +1094,7 @@ class DiscoveredPeerCard extends BasePeerCard {
     final List<MenuEntryBase<String>> menuItems = [
       _connectAction(context),
       _transferFileAction(context),
-      _viewCameraAction(context),
+      // _viewCameraAction(context), // GSPSoporte: sin video/camara
       _terminalAction(context),
     ];
 
@@ -1153,7 +1153,7 @@ class AddressBookPeerCard extends BasePeerCard {
     final List<MenuEntryBase<String>> menuItems = [
       _connectAction(context),
       _transferFileAction(context),
-      _viewCameraAction(context),
+      // _viewCameraAction(context), // GSPSoporte: sin video/camara
       _terminalAction(context),
     ];
 
@@ -1310,7 +1310,7 @@ class MyGroupPeerCard extends BasePeerCard {
     final List<MenuEntryBase<String>> menuItems = [
       _connectAction(context),
       _transferFileAction(context),
-      _viewCameraAction(context),
+      // _viewCameraAction(context), // GSPSoporte: sin video/camara
       _terminalAction(context),
     ];
 

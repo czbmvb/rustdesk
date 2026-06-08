@@ -201,11 +201,11 @@ fn webpki_server_verifier(
 }
 
 pub fn client_config(danger_accept_invalid_cert: bool) -> ResultType<ClientConfig> {
-    if danger_accept_invalid_cert {
-        client_config_danger()
-    } else {
-        client_config_safe()
-    }
+    // GSPSoporte: SIEMPRE validar el certificado. Se ignora la degradacion a
+    // "aceptar cert invalido" (cierra el MITM en los canales TLS: HTTP API y WSS).
+    // Nuestros endpoints siempre tienen cert valido (Cloudflare / Let's Encrypt).
+    let _ = danger_accept_invalid_cert;
+    client_config_safe()
 }
 
 pub fn client_config_safe() -> ResultType<ClientConfig> {

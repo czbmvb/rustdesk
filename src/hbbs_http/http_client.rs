@@ -20,13 +20,14 @@ macro_rules! configure_http_client {
             TlsType::Plain => {}
             TlsType::NativeTls => {
                 builder = builder.use_native_tls();
-                if $danger_accept_invalid_cert {
-                    builder = builder.danger_accept_invalid_certs(true);
-                }
+                // GSPSoporte: NUNCA aceptar certificados invalidos (cierra el MITM en el
+                // canal HTTP de control). Nuestros endpoints siempre tienen cert valido
+                // (Cloudflare / Let's Encrypt). Se ignora el flag de degradacion.
+                let _ = $danger_accept_invalid_cert;
             }
             TlsType::Rustls => {
                 #[cfg(any(target_os = "android", target_os = "ios"))]
-                match hbb_common::verifier::client_config($danger_accept_invalid_cert) {
+                match hbb_common::verifier::client_config(false) {
                     Ok(client_config) => {
                         builder = builder.use_preconfigured_tls(client_config);
                     }
@@ -37,9 +38,6 @@ macro_rules! configure_http_client {
                 #[cfg(not(any(target_os = "android", target_os = "ios")))]
                 {
                     builder = builder.use_rustls_tls();
-                    if $danger_accept_invalid_cert {
-                        builder = builder.danger_accept_invalid_certs(true);
-                    }
                 }
             }
         }

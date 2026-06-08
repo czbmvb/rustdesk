@@ -493,7 +493,9 @@ pub const VER_TYPE_RUSTDESK_CLIENT: &str = "rustdesk-client";
 pub const VER_TYPE_RUSTDESK_SERVER: &str = "rustdesk-server";
 
 pub fn version_check_request(typ: String) -> (VersionCheckRequest, String) {
-    const URL: &str = "https://api.rustdesk.com/version/latest";
+    // GSPSoporte: sin contacto a api.rustdesk.com. Apunta a nuestro dominio
+    // (404 = "sin actualizacion"); el auto-update esta desactivado por defecto.
+    const URL: &str = "https://cuentas.gspcoms.net/version/latest";
 
     use sysinfo::System;
     let system = System::new();
