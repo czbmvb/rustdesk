@@ -96,8 +96,9 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId "com.carriez.flutter_hbb"
+        // GSPSoporte: applicationId propio (identidad en Play/dispositivo).
+        // El namespace interno sigue siendo com.carriez.flutter_hbb (clases Java + JNI Rust) — NO cambiar.
+        applicationId "com.gspcoms.soporte"
         minSdkVersion 22
         targetSdkVersion 33
         versionCode flutterVersionCode.toInteger()
