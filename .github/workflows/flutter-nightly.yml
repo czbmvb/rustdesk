@@ -1,9 +1,8 @@
 name: Flutter Nightly Build
 
 on:
-  schedule:
-    # schedule build every night
-    - cron: "0 0 * * *"
+  # GSPSoporte: se quito el cron nocturno (compilaba solo cada noche, ~1h de CI
+  # sin necesidad). Solo se dispara MANUALMENTE cuando lo necesitamos.
   workflow_dispatch:
 
 jobs:
