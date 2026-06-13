@@ -25,6 +25,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:window_size/window_size.dart' as window_size;
 import '../widgets/button.dart';
+import '../../common/widgets/hardware_report.dart';
 
 class DesktopHomePage extends StatefulWidget {
   const DesktopHomePage({Key? key}) : super(key: key);
@@ -222,7 +223,25 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                                   ?.color
                                   ?.withOpacity(0.5)),
                         ).marginOnly(top: 5),
-                        buildPopupMenu(context)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Tooltip(
+                              message: translate('Device report'),
+                              child: InkWell(
+                                onTap: () => showHardwareReportDialog(context),
+                                child: Icon(Icons.memory,
+                                    size: 22,
+                                    color: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.color
+                                        ?.withOpacity(0.55)),
+                              ),
+                            ).marginOnly(right: 12, top: 3),
+                            buildPopupMenu(context),
+                          ],
+                        ),
                       ],
                     ),
                   ),

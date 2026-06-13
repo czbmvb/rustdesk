@@ -29,6 +29,9 @@ dependencies:
 
   ffi: ^2.1.0
   path_provider: ^2.1.1
+  # GSPCOMS: export de reporte de hardware a PDF / Excel
+  pdf: ^3.11.1
+  excel: ^4.0.6
   external_path: ^1.0.3
   provider: ^6.0.5
   tuple: ^2.0.0

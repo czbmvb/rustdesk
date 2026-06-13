@@ -939,6 +939,12 @@ pub fn main_get_login_device_info() -> SyncReturn<String> {
     SyncReturn(get_login_device_info_json())
 }
 
+// GSPCOMS: specs de hardware del equipo local (CPU/RAM/OS/hostname) para el
+// reporte de inventario. Discos/GPU/batería se completan del lado Flutter.
+pub fn main_get_hardware_specs() -> SyncReturn<String> {
+    SyncReturn(crate::common::get_sysinfo().to_string())
+}
+
 pub fn main_change_id(new_id: String) {
     change_id(new_id)
 }
