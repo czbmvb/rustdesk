@@ -1439,7 +1439,10 @@ class FfiModel with ChangeNotifier {
     if (_gspsSessionId != null || _gspsStarting) return;
     _gspsStarting = true;
     try {
-      final sid = await GspsApi.instance.sessionStart(peerId);
+      // La sesión ya se reservó en el gate (connect); recogerla. Si no hay reserva
+      // (fallback: p.ej. reconexión), reservar ahora.
+      int? sid = GspsApi.instance.takeReservation(peerId);
+      sid ??= (await GspsApi.instance.sessionStart(peerId)).sessionId;
       if (sid == null) return;
       _gspsSessionId = sid;
       _gspsBeatTimer?.cancel();

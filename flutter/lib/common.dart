@@ -2564,9 +2564,9 @@ connect(BuildContext context, String id,
   id = await bind.mainHandleRelayId(id: id);
   forceRelay = id != oldId || forceRelay;
 
-  // GSPSoporte: login-gate. Exige cuenta GSPCOMS + pase activo antes de conectar
-  // (aplica a todos los modos: control remoto, archivos, cámara, terminal, RDP).
-  if (!await GspsApi.instance.ensureCanConnect()) {
+  // GSPSoporte: login-gate. Exige cuenta GSPCOMS + pase activo y RESERVA la sesión
+  // (para que el receptor la vea) antes de conectar. Aplica a todos los modos.
+  if (!await GspsApi.instance.ensureCanConnect(id)) {
     return;
   }
 

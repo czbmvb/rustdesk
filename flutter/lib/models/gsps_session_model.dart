@@ -12,9 +12,21 @@ import '../utils/http_service.dart' as http;
 import 'platform_model.dart';
 import 'state_model.dart';
 
+/// Resultado de reservar/iniciar una sesión de soporte.
+class GspsStartResult {
+  final int? sessionId; // no-null si el server autorizó (hay pase + cupo)
+  final bool networkError; // true si no se pudo contactar al server
+  final String? reason; // 'no_active_pass' | 'concurrency_full' | 'account_pending_approval'
+  GspsStartResult({this.sessionId, this.networkError = false, this.reason});
+}
+
 class GspsApi {
   GspsApi._();
   static final GspsApi instance = GspsApi._();
+
+  // Reservas hechas en el gate (peer_id destino -> session_id), que el FfiModel
+  // recoge cuando la conexión se establece (handlePeerInfo).
+  final Map<String, int> _reservations = {};
 
   String get _platform {
     if (isAndroid) return 'android';
@@ -57,31 +69,42 @@ class GspsApi {
         'Authorization': 'Bearer $token',
       };
 
-  /// POST /api/gsps/session/start. Devuelve el session_id si el server autoriza,
-  /// o null si no (no logueado / sin pase / concurrencia llena / cuenta pendiente).
-  /// No lanza: la medición nunca debe romper la conexión.
-  Future<int?> sessionStart(String peerId) async {
+  /// POST /api/gsps/session/start. Reserva la sesión: valida pase + concurrencia y
+  /// crea la fila que el RECEPTOR consulta (authorize). Distingue denegación clara
+  /// (sin pase / cupo lleno) de error de red. No lanza.
+  Future<GspsStartResult> sessionStart(String peerId) async {
     try {
       final token = bind.mainGetLocalOption(key: 'access_token');
-      if (token.isEmpty) return null;
+      if (token.isEmpty) return GspsStartResult(reason: 'not_logged_in');
       final base = await bind.mainGetApiServer();
-      if (base.isEmpty) return null;
+      if (base.isEmpty) return GspsStartResult(networkError: true);
       final resp = await http
           .post(Uri.parse('$base/api/gsps/session/start'),
               headers: _authHeaders(token),
               body: jsonEncode({'peer_id': peerId}))
           .timeout(const Duration(seconds: 10));
-      if (resp.statusCode != 200) return null;
+      if (resp.statusCode != 200) return GspsStartResult(networkError: true);
       final m = jsonDecode(resp.body) as Map<String, dynamic>;
       if (m['allowed'] == true && m['session_id'] != null) {
-        return (m['session_id'] as num).toInt();
+        return GspsStartResult(sessionId: (m['session_id'] as num).toInt());
       }
-      return null;
+      return GspsStartResult(reason: (m['reason'] ?? 'denied').toString());
     } catch (e) {
       debugPrint('GspsApi.sessionStart: $e');
-      return null;
+      return GspsStartResult(networkError: true);
     }
   }
+
+  /// Reserva en el GATE (antes de conectar): guarda el session_id por peer_id para
+  /// que el FfiModel lo recoja al establecerse la conexión.
+  Future<GspsStartResult> reserve(String peerId) async {
+    final r = await sessionStart(peerId);
+    if (r.sessionId != null) _reservations[peerId] = r.sessionId!;
+    return r;
+  }
+
+  /// El FfiModel recoge (y quita) la reserva hecha en el gate para este peer.
+  int? takeReservation(String peerId) => _reservations.remove(peerId);
 
   /// POST /api/gsps/session/beat (latido). Silencioso.
   Future<void> sessionBeat(int sessionId) async {
@@ -117,11 +140,11 @@ class GspsApi {
     }
   }
 
-  /// Login-gate: verifica cuenta + pase ANTES de conectar. Devuelve true si se
-  /// puede proceder, false si hay que abortar la conexión (muestra el login o un
-  /// aviso según el caso). Fail-open ante error de red para no bloquear soporte
-  /// por un hipo del server (enforcement cooperativo/honesto, no criptográfico).
-  Future<bool> ensureCanConnect() async {
+  /// Login-gate: verifica cuenta + RESERVA la sesión ANTES de conectar (para que
+  /// el receptor la vea). Devuelve true si se puede proceder, false si hay que
+  /// abortar. Fail-open del lado controlador ante error de red (el RECEPTOR es
+  /// quien hace cumplir el cobro, fail-closed). `peerId` = id destino.
+  Future<bool> ensureCanConnect(String peerId) async {
     if (isWeb) return true; // el gate aplica al cliente instalado
     // 1) Login: si no hay sesión GSPCOMS, pedirla.
     var token = bind.mainGetLocalOption(key: 'access_token');
@@ -131,30 +154,16 @@ class GspsApi {
       token = bind.mainGetLocalOption(key: 'access_token');
       if (token.isEmpty) return false;
     }
-    // 2) Pase: consultar el estado del servicio.
-    try {
-      final base = await bind.mainGetApiServer();
-      if (base.isEmpty) return true; // sin API configurada: no bloquear
-      final resp = await http
-          .get(Uri.parse('$base/api/gsps/status'), headers: _authHeaders(token))
-          .timeout(const Duration(seconds: 10));
-      if (resp.statusCode != 200) return true; // fail-open ante error del server
-      final m = jsonDecode(resp.body) as Map<String, dynamic>;
-      final active = m['active'] == true || m['unlimited'] == true;
-      if (!active) {
-        showToast(translate('You need an active pass to connect.'));
-        return false;
-      }
-      final used = (m['concurrency_used'] as num?)?.toInt() ?? 0;
-      final limit = (m['concurrency_limit'] as num?)?.toInt() ?? 1;
-      if (used >= limit) {
-        showToast(translate('Your concurrent sessions limit is reached.'));
-        return false;
-      }
-      return true;
-    } catch (e) {
-      debugPrint('GspsApi.ensureCanConnect (fail-open): $e');
-      return true; // fail-open ante error de red
+    // 2) Reservar (valida el pase Y crea la fila que el receptor consulta).
+    final r = await reserve(peerId);
+    if (r.sessionId != null) return true;
+    if (r.networkError) return true; // fail-open aquí; el receptor hace cumplir
+    // Denegación clara del server: avisar y abortar.
+    if (r.reason == 'concurrency_full') {
+      showToast(translate('Your concurrent sessions limit is reached.'));
+    } else {
+      showToast(translate('You need an active pass to connect.'));
     }
+    return false;
   }
 }

@@ -401,6 +401,12 @@ const SEND_TIMEOUT_VIDEO: u64 = 12_000;
 const SEND_TIMEOUT_OTHER: u64 = SEND_TIMEOUT_VIDEO * 10;
 const SESSION_TIMEOUT: Duration = Duration::from_secs(30);
 
+// GSPSoporte: enforcement server-side del cobro. Cache global de si el enforcement
+// está prendido (según lo último visto del server). Solo se aplica fail-closed
+// cuando ya se vio enforce=ON (así el rollout con el interruptor apagado no afecta).
+static GSPS_ENFORCE_ON: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
 impl Connection {
     pub async fn start(
         addr: SocketAddr,
@@ -1497,6 +1503,28 @@ impl Connection {
         }
     }
 
+    // GSPSoporte: pregunta a gspcoms-api si hay una sesión de soporte pagada y activa
+    // dirigida a este equipo. Devuelve (enforce, authorized), o None si no se pudo
+    // confirmar (server inalcanzable / sin API). No lanza.
+    async fn gsps_query_authorize() -> Option<(bool, bool)> {
+        let api = crate::get_api_server(
+            Config::get_option("api-server"),
+            Config::get_option("custom-rendezvous-server"),
+        );
+        if api.is_empty() {
+            return None;
+        }
+        let url = format!("{}/api/gsps/session/authorize", api);
+        let body = format!("{{\"peer_id\":\"{}\"}}", Config::get_id());
+        match crate::post_request(url, body, "").await {
+            Ok(resp) => Some((
+                resp.contains("\"enforce\":true"),
+                resp.contains("\"authorized\":true"),
+            )),
+            Err(_) => None,
+        }
+    }
+
     // Returns whether this connection should be kept alive.
     // `true` does not necessarily mean authorization succeeded (e.g. REQUIRE_2FA case).
     async fn send_logon_response_and_keep_alive(&mut self) -> bool {
@@ -1540,6 +1568,35 @@ impl Connection {
         }
         if !self.connect_port_forward_if_needed().await {
             return false;
+        }
+        // GSPSoporte: enforcement server-side. El receptor solo acepta si gspcoms-api
+        // confirma una sesión pagada activa para este equipo. Fail-CLOSED cuando el
+        // interruptor (enforce) está prendido; con el interruptor apagado NO bloquea
+        // ni demora (rollout seguro): solo refresca el flag en segundo plano.
+        {
+            use std::sync::atomic::Ordering;
+            if GSPS_ENFORCE_ON.load(Ordering::Relaxed) {
+                let allow = match Connection::gsps_query_authorize().await {
+                    Some((enforce, authorized)) => {
+                        GSPS_ENFORCE_ON.store(enforce, Ordering::Relaxed);
+                        !enforce || authorized
+                    }
+                    None => false, // enforce estaba on y no se pudo confirmar -> rechazar
+                };
+                if !allow {
+                    self.send_login_error(
+                        "No active support pass for this device (GSPSoporte).",
+                    )
+                    .await;
+                    return false;
+                }
+            } else {
+                tokio::spawn(async move {
+                    if let Some((enforce, _)) = Connection::gsps_query_authorize().await {
+                        GSPS_ENFORCE_ON.store(enforce, Ordering::Relaxed);
+                    }
+                });
+            }
         }
         self.authorized = true;
         let (conn_type, auth_conn_type) = if self.file_transfer.is_some() {
