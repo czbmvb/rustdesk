@@ -1446,9 +1446,15 @@ class FfiModel with ChangeNotifier {
       if (sid == null) return;
       _gspsSessionId = sid;
       _gspsBeatTimer?.cancel();
-      _gspsBeatTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      _gspsBeatTimer = Timer.periodic(const Duration(minutes: 1), (_) async {
         final id = _gspsSessionId;
-        if (id != null) GspsApi.instance.sessionBeat(id);
+        if (id == null) return;
+        final keepAlive = await GspsApi.instance.sessionBeat(id);
+        if (!keepAlive) {
+          // El server cerró la sesión (admin / pase vencido / sweeper): desconectar.
+          _gspsBeatTimer?.cancel();
+          closeConnection(id: peerId);
+        }
       });
     } finally {
       _gspsStarting = false;

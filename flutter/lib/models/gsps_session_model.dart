@@ -106,20 +106,26 @@ class GspsApi {
   /// El FfiModel recoge (y quita) la reserva hecha en el gate para este peer.
   int? takeReservation(String peerId) => _reservations.remove(peerId);
 
-  /// POST /api/gsps/session/beat (latido). Silencioso.
-  Future<void> sessionBeat(int sessionId) async {
+  /// POST /api/gsps/session/beat (latido). Devuelve keep_alive: `false` SOLO si el
+  /// server cerró la sesión (admin / pase vencido / sweeper) → el controlador debe
+  /// desconectar. Ante error/timeout devuelve true (no forzar desconexión por un hipo).
+  Future<bool> sessionBeat(int sessionId) async {
     try {
       final token = bind.mainGetLocalOption(key: 'access_token');
-      if (token.isEmpty) return;
+      if (token.isEmpty) return true;
       final base = await bind.mainGetApiServer();
-      if (base.isEmpty) return;
-      await http
+      if (base.isEmpty) return true;
+      final resp = await http
           .post(Uri.parse('$base/api/gsps/session/beat'),
               headers: _authHeaders(token),
               body: jsonEncode({'session_id': sessionId}))
           .timeout(const Duration(seconds: 8));
+      if (resp.statusCode != 200) return true;
+      final m = jsonDecode(resp.body) as Map<String, dynamic>;
+      return m['keep_alive'] != false; // false explícito => desconectar
     } catch (e) {
       debugPrint('GspsApi.sessionBeat: $e');
+      return true;
     }
   }
 
