@@ -26,6 +26,10 @@ class StateGlobal {
   final isPortrait = false.obs;
 
   final updateUrl = ''.obs;
+  // GSPSoporte: actualización forzada cuando la versión del app < app_min_version
+  // (server-driven, ver GspsApi.checkMinVersion + GspsForceUpdateGate).
+  final forceUpdate = false.obs;
+  String forceUpdateUrl = '';
 
   String _inputSource = '';
 

@@ -14,6 +14,7 @@ import 'package:flutter_hbb/desktop/widgets/tabbar_widget.dart';
 import 'package:flutter_hbb/main.dart';
 import 'package:flutter_hbb/models/peer_model.dart';
 import 'package:flutter_hbb/models/peer_tab_model.dart';
+import 'package:flutter_hbb/models/gsps_session_model.dart';
 import 'package:flutter_hbb/models/state_model.dart';
 import 'package:flutter_hbb/utils/multi_window_manager.dart';
 import 'package:flutter_hbb/utils/platform_channel.dart';
@@ -2562,6 +2563,13 @@ connect(BuildContext context, String id,
   final oldId = id;
   id = await bind.mainHandleRelayId(id: id);
   forceRelay = id != oldId || forceRelay;
+
+  // GSPSoporte: login-gate. Exige cuenta GSPCOMS + pase activo antes de conectar
+  // (aplica a todos los modos: control remoto, archivos, cámara, terminal, RDP).
+  if (!await GspsApi.instance.ensureCanConnect()) {
+    return;
+  }
+
   assert(!(isFileTransfer && isTcpTunneling && isRDP),
       "more than one connect type");
 

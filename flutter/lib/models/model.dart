@@ -23,6 +23,7 @@ import 'package:flutter_hbb/models/printer_model.dart';
 import 'package:flutter_hbb/models/server_model.dart';
 import 'package:flutter_hbb/models/user_model.dart';
 import 'package:flutter_hbb/models/state_model.dart';
+import 'package:flutter_hbb/models/gsps_session_model.dart';
 import 'package:flutter_hbb/models/desktop_render_texture.dart';
 import 'package:flutter_hbb/models/terminal_model.dart';
 import 'package:flutter_hbb/plugin/event.dart';
@@ -1406,6 +1407,12 @@ class FfiModel with ChangeNotifier {
     _pi.isSet.value = true;
     stateGlobal.resetLastResolutionGroupValues(peerId);
 
+    // GSPSoporte: iniciar la medición de la sesión de soporte (bitácora + cobro).
+    // Solo en control remoto real (no cache); idempotente ante reconexiones.
+    if (!isCache && connType == ConnType.defaultConn) {
+      _gspsStartSession(peerId);
+    }
+
     if (isDesktop || isWebDesktop) {
       // checkDesktopKeyboardMode may change the keyboard mode if the current
       // mode is not supported. Re-sync InputModel.keyboardMode afterwards.
@@ -1419,6 +1426,39 @@ class FfiModel with ChangeNotifier {
     if (!isCache) {
       tryUseAllMyDisplaysForTheRemoteSession(peerId);
     }
+  }
+
+  // ---------- GSPSoporte: medición de la sesión de soporte ----------
+  int? _gspsSessionId;
+  Timer? _gspsBeatTimer;
+  bool _gspsStarting = false;
+
+  // Inicia la medición contra gspcoms-api (start + latido cada minuto).
+  // Idempotente: no re-inicia si ya hay sesión o una en curso (reconexiones).
+  void _gspsStartSession(String peerId) async {
+    if (_gspsSessionId != null || _gspsStarting) return;
+    _gspsStarting = true;
+    try {
+      final sid = await GspsApi.instance.sessionStart(peerId);
+      if (sid == null) return;
+      _gspsSessionId = sid;
+      _gspsBeatTimer?.cancel();
+      _gspsBeatTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+        final id = _gspsSessionId;
+        if (id != null) GspsApi.instance.sessionBeat(id);
+      });
+    } finally {
+      _gspsStarting = false;
+    }
+  }
+
+  // Cierra la medición (llamado desde FFI.close). No-op si no había sesión activa.
+  void gspsEndSession() {
+    final id = _gspsSessionId;
+    _gspsBeatTimer?.cancel();
+    _gspsBeatTimer = null;
+    _gspsSessionId = null;
+    if (id != null) GspsApi.instance.sessionEnd(id);
   }
 
   checkDesktopKeyboardMode() async {
@@ -3934,6 +3974,7 @@ class FFI {
     inputModel.disposeRelativeMouseMode();
     inputModel.disposeSideButtonTracking();
     if (closeSession) {
+      ffiModel.gspsEndSession(); // GSPSoporte: cerrar la medición de la sesión
       await bind.sessionClose(sessionId: sessionId);
     }
     debugPrint('model $id closed');

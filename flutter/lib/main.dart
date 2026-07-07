@@ -29,6 +29,8 @@ import 'mobile/pages/home_page.dart';
 import 'mobile/pages/server_page.dart';
 import 'mobile/widgets/deploy_dialog.dart';
 import 'models/platform_model.dart';
+import 'models/gsps_session_model.dart';
+import 'common/widgets/gsps_force_update.dart';
 
 import 'package:flutter_hbb/plugin/handlers.dart'
     if (dart.library.html) 'package:flutter_hbb/web/plugin/handlers.dart';
@@ -137,6 +139,7 @@ void runMainApp(bool startService) async {
   // register uni links
   await initEnv(kAppTypeMain);
   checkUpdate();
+  unawaited(GspsApi.instance.checkMinVersion()); // GSPSoporte: forced-update
   // trigger connection status updater
   await bind.mainCheckConnectStatus();
   if (startService) {
@@ -181,6 +184,7 @@ void runMainApp(bool startService) async {
 void runMobileApp() async {
   await initEnv(kAppTypeMain);
   checkUpdate();
+  unawaited(GspsApi.instance.checkMinVersion()); // GSPSoporte: forced-update
   if (isAndroid) androidChannelInit();
   if (isAndroid) platformFFI.syncAndroidServiceAppDirConfigPath();
   draggablePositions.load();
@@ -506,11 +510,13 @@ class _AppState extends State<App> with WidgetsBindingObserver {
           theme: MyTheme.lightTheme,
           darkTheme: MyTheme.darkTheme,
           themeMode: MyTheme.currentThemeMode(),
-          home: isDesktop
-              ? const DesktopTabPage()
-              : isWeb
-                  ? WebHomePage()
-                  : HomePage(),
+          home: GspsForceUpdateGate(
+            child: isDesktop
+                ? const DesktopTabPage()
+                : isWeb
+                    ? WebHomePage()
+                    : HomePage(),
+          ),
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
