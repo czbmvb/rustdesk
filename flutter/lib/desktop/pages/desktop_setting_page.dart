@@ -2417,6 +2417,14 @@ class _AboutState extends State<_About> {
                     translate('Website'),
                     style: linkStyle,
                   ).marginSymmetric(vertical: 4.0)),
+              InkWell(
+                  onTap: () {
+                    launchUrlString('https://gspcoms.net/ayuda');
+                  },
+                  child: Text(
+                    translate('Report a problem'),
+                    style: linkStyle,
+                  ).marginSymmetric(vertical: 4.0)),
               Container(
                 decoration: const BoxDecoration(color: Color(0xFF2c8cff)),
                 padding:

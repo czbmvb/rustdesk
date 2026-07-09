@@ -65,6 +65,9 @@ pub struct Remote<T: InvokeUiSession> {
     write_jobs: Vec<fs::TransferJob>,
     remove_jobs: HashMap<i32, RemoveJob>,
     timer: crate::RustDeskInterval,
+    // GSPSoporte: momento del último input saliente (mouse/teclado) para el
+    // auto-corte por inactividad. NO reusar last_recv_time (se resetea con el video).
+    last_input_activity: Instant,
     last_update_jobs_status: (Instant, HashMap<i32, u64>),
     is_connected: bool,
     first_frame: bool,
@@ -112,6 +115,7 @@ impl<T: InvokeUiSession> Remote<T> {
             write_jobs: Vec::new(),
             remove_jobs: Default::default(),
             timer: crate::rustdesk_interval(time::interval(SEC30)),
+            last_input_activity: Instant::now(),
             last_update_jobs_status: (Instant::now(), Default::default()),
             is_connected: false,
             first_frame: false,
@@ -279,6 +283,20 @@ impl<T: InvokeUiSession> Remote<T> {
                             }
                         }
                         _ = status_timer.tick() => {
+                            // GSPSoporte: auto-corte por inactividad (60 min sin input
+                            // saliente) en control remoto. Corta del lado del controlador;
+                            // el sweeper del server es el respaldo.
+                            if self.handler.is_default()
+                                && self.last_input_activity.elapsed() >= Duration::from_secs(3600)
+                            {
+                                self.handler.msgbox(
+                                    "error",
+                                    "Connection Error",
+                                    "Idle timeout - session closed",
+                                    "",
+                                );
+                                break;
+                            }
                             let elapsed = fps_instant.elapsed().as_millis();
                             if elapsed < 1000 {
                                 continue;
@@ -563,6 +581,13 @@ impl<T: InvokeUiSession> Remote<T> {
                         }
                         _ => {}
                     },
+                    // GSPSoporte: registrar input saliente (mouse/teclado/pointer) para
+                    // el auto-corte por inactividad. NO cuentan Misc/clipboard/audio.
+                    Some(message::Union::MouseEvent(_))
+                    | Some(message::Union::KeyEvent(_))
+                    | Some(message::Union::PointerDeviceEvent(_)) => {
+                        self.last_input_activity = Instant::now();
+                    }
                     _ => {}
                 }
                 allow_err!(peer.send(&msg).await);

@@ -712,6 +712,12 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
             ],
           ),
         SettingsSection(title: Text(translate("Settings")), tiles: [
+          SettingsTile(
+              title: Text(translate('Report a problem')),
+              leading: Icon(Icons.help_outline),
+              onPressed: (context) {
+                launchUrlString('https://gspcoms.net/ayuda');
+              }),
           if (!disabledSettings && !_hideNetwork && !_hideServer)
             SettingsTile(
                 title: Text(translate('ID/Relay Server')),
