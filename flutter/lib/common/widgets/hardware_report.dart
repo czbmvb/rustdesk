@@ -24,6 +24,7 @@ Future<Map<String, dynamic>> gatherHardwareReport() async {
   final report = <String, dynamic>{
     'rustdesk_id': '',
     'hostname': '',
+    'username': '',
     'os': '',
     'cpu': '',
     'ram_gb': 0,
@@ -43,6 +44,9 @@ Future<Map<String, dynamic>> gatherHardwareReport() async {
       report['cpu'] = (m['cpu'] ?? '').toString();
       report['os'] = (m['os'] ?? '').toString();
       report['hostname'] = (m['hostname'] ?? '').toString();
+      // GSPCOMS: usuario de Windows con sesión activa. get_sysinfo ya lo trae
+      // (omite "SYSTEM"), solo no se estaba mostrando en el reporte.
+      report['username'] = (m['username'] ?? '').toString();
       // "memory" viene como "16GB"; extraemos el número.
       final mem = (m['memory'] ?? '').toString();
       final num = RegExp(r'([\d.]+)').firstMatch(mem)?.group(1);
@@ -90,9 +94,21 @@ $batPct = if ($bat) { [int]$bat.EstimatedChargeRemaining } else { $null }
 
 Future<Map<String, dynamic>?> _runPowerShell(String script) async {
   try {
+    // -WindowStyle Hidden: desde que esto corre SOLO (autoReportHardware) en
+    // equipos de cliente, no puede asomarse ninguna ventana. Sin interfaz de
+    // por medio, un parpadeo de consola se ve como si algo raro pasara.
     final res = await Process.run(
       'powershell',
-      ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script],
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-WindowStyle',
+        'Hidden',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-Command',
+        script
+      ],
     ).timeout(const Duration(seconds: 20));
     final out = (res.stdout ?? '').toString().trim();
     if (out.isEmpty) return null;
@@ -140,12 +156,88 @@ Future<String?> _pushToInventory(Map<String, dynamic> report) async {
   }
 }
 
+/// GSPCOMS: sube el reporte al inventario SIN necesitar login, usando el mismo
+/// canal que ya usa el latido de RustDesk (POST /api/sysinfo, identificado por
+/// el ID del equipo). Es lo que permite que el inventario se llene SOLO en los
+/// equipos del cliente, donde nunca hay un técnico logueado — a diferencia de
+/// [_pushToInventory], que va a /api/devices y sí exige token.
+///
+/// El backend hace un UPSERT conservador: solo escribe video/laptop/batería
+/// cuando vienen con dato, así que el latido normal (que no los manda) jamás
+/// los borra. Discos y tiempo encendido caen en `specs` sin cambio adicional.
+///
+/// Se manda como mucho una vez cada 24 h: el hardware casi no cambia y así no
+/// se castiga el arranque. Nunca lanza; si falla, se reintenta al siguiente.
+Future<void> autoReportHardware() async {
+  const marca = 'gspcoms_last_hw_report';
+  try {
+    final ahora = DateTime.now().millisecondsSinceEpoch;
+    final ultimo = int.tryParse(bind.mainGetLocalOption(key: marca)) ?? 0;
+    if (ultimo != 0 && ahora - ultimo < 24 * 60 * 60 * 1000) return;
+
+    final url = await bind.mainGetApiServer();
+    if (url.isEmpty) return;
+
+    final r = await gatherHardwareReport();
+    final id = (r['rustdesk_id'] ?? '').toString().trim();
+    if (id.isEmpty) return;
+
+    // Si no logramos nada rico (p. ej. PowerShell falló, o no es Windows), no
+    // mandamos nada: el latido normal ya cubre procesador/RAM/sistema, y así
+    // evitamos escribir un `is_laptop: false` que pisaría una detección buena.
+    final sinVideo = (r['gpu'] ?? '').toString().isEmpty;
+    final sinDiscos = (r['disks'] as List?)?.isEmpty ?? true;
+    if (sinVideo && sinDiscos) {
+      debugPrint('autoReportHardware: sin datos ricos, no se reporta');
+      return;
+    }
+
+    final body = {
+      'id': id,
+      'hostname': r['hostname'],
+      'username': r['username'],
+      'os': r['os'],
+      'cpu': r['cpu'],
+      // El backend lee la RAM de una cadena tipo "32GB" (parseRAMGB).
+      'memory': '${r['ram_gb']}GB',
+      'gpu': r['gpu'],
+      // Solo lo mandamos cuando detectamos batería (= es laptop). Si no la
+      // detectamos NO mandamos `false`, porque en una laptop cuya batería no
+      // responda borraríamos una detección buena. El backend deja el campo
+      // intacto cuando no viene.
+      if (r['is_laptop'] == true) 'is_laptop': true,
+      'battery_percent': r['battery_percent'],
+      'disks': r['disks'],
+      'volumes': r['volumes'],
+      'uptime_hours': r['uptime_hours'],
+    };
+
+    final resp = await http
+        .post(
+          Uri.parse('$url/api/sysinfo'),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode(body),
+        )
+        .timeout(const Duration(seconds: 20));
+
+    if (resp.statusCode == 200) {
+      await bind.mainSetLocalOption(key: marca, value: '$ahora');
+      debugPrint('autoReportHardware: inventario actualizado');
+    } else {
+      debugPrint('autoReportHardware: HTTP ${resp.statusCode}');
+    }
+  } catch (e) {
+    debugPrint('autoReportHardware (silencioso): $e');
+  }
+}
+
 // ---------- Formato legible ----------
 
 List<List<String>> _reportRows(Map<String, dynamic> r) {
   final rows = <List<String>>[
     ['Equipo (ID)', '${r['rustdesk_id']}'],
     ['Nombre', '${r['hostname']}'],
+    ['Usuario', '${r['username']}'.isEmpty ? 'N/D' : '${r['username']}'],
     ['Sistema', '${r['os']}'],
     ['Procesador', '${r['cpu']}'],
     ['Memoria RAM', '${r['ram_gb']} GB'],
