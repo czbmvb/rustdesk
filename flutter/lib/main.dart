@@ -32,6 +32,7 @@ import 'models/platform_model.dart';
 import 'models/gsps_session_model.dart';
 import 'common/widgets/gsps_force_update.dart';
 import 'common/widgets/hardware_report.dart';
+import 'common/widgets/gsps_remember.dart';
 
 import 'package:flutter_hbb/plugin/handlers.dart'
     if (dart.library.html) 'package:flutter_hbb/web/plugin/handlers.dart';
@@ -142,6 +143,7 @@ void runMainApp(bool startService) async {
   checkUpdate();
   unawaited(GspsApi.instance.checkMinVersion()); // GSPSoporte: forced-update
   unawaited(autoReportHardware()); // GSPSoporte: inventario automatico (1x/24h)
+  unawaited(reloginAutomatico()); // GSPSoporte: "recuerdame" (vuelve a entrar solo)
   // trigger connection status updater
   await bind.mainCheckConnectStatus();
   if (startService) {
@@ -188,6 +190,7 @@ void runMobileApp() async {
   checkUpdate();
   unawaited(GspsApi.instance.checkMinVersion()); // GSPSoporte: forced-update
   unawaited(autoReportHardware()); // GSPSoporte: inventario automatico (1x/24h)
+  unawaited(reloginAutomatico()); // GSPSoporte: "recuerdame" (vuelve a entrar solo)
   if (isAndroid) androidChannelInit();
   if (isAndroid) platformFFI.syncAndroidServiceAppDirConfigPath();
   draggablePositions.load();

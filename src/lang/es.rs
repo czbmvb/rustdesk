@@ -2,6 +2,15 @@ lazy_static::lazy_static! {
 pub static ref T: std::collections::HashMap<&'static str, &'static str> =
     [
         ("Status", "Estado"),
+        // GSPCOMS: mensajes propios (pases, reporte de hardware, actualización).
+        ("Device report", "Reporte del equipo"),
+        ("Save to inventory", "Guardar en el inventario"),
+        ("Export PDF", "Exportar a PDF"),
+        ("Export Excel", "Exportar a Excel"),
+        ("Login required", "Necesitas iniciar sesión"),
+        ("Update required", "Hay que actualizar"),
+        ("You need an active pass to connect.", "Necesitas un pase activo para conectarte."),
+        ("Your concurrent sessions limit is reached.", "Llegaste al límite de sesiones simultáneas."),
         ("Your Desktop", "Tu escritorio"),
         ("desk_tip", "Puedes acceder a tu escritorio con esta ID y contraseña."),
         ("Password", "Contraseña"),

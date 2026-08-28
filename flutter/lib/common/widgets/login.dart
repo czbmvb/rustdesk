@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../common.dart';
 import './dialog.dart';
+import './gsps_remember.dart';
 
 const kOpSvgList = [
   'github',
@@ -365,6 +366,9 @@ class LoginWidgetUserPass extends StatelessWidget {
   final RxString curOP;
   final Function() onLogin;
   final FocusNode? userFocusNode;
+  // GSPCOMS: estado de la casilla "recuérdame".
+  final bool recordarme;
+  final Function(bool) onRecordarmeChanged;
   const LoginWidgetUserPass({
     Key? key,
     this.userFocusNode,
@@ -375,6 +379,8 @@ class LoginWidgetUserPass extends StatelessWidget {
     required this.isInProgress,
     required this.curOP,
     required this.onLogin,
+    required this.recordarme,
+    required this.onRecordarmeChanged,
   }) : super(key: key);
 
   @override
@@ -396,6 +402,24 @@ class LoginWidgetUserPass extends StatelessWidget {
               autoFocus: false,
               reRequestFocus: true,
               errorText: passMsg,
+            ),
+            // GSPCOMS: "recuérdame". La contraseña queda cifrada con la llave
+            // del equipo, así la app vuelve a entrar sola cuando el pase caduca.
+            Align(
+              alignment: Alignment.centerLeft,
+              child: InkWell(
+                onTap: () => onRecordarmeChanged(!recordarme),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Checkbox(
+                    value: recordarme,
+                    onChanged: (v) => onRecordarmeChanged(v ?? false),
+                  ),
+                  Flexible(
+                    child: Text('Recordar mi usuario y contraseña',
+                        style: TextStyle(fontSize: 13)),
+                  ),
+                ]),
+              ),
             ),
             // NOT use Offstage to wrap LinearProgressIndicator
             if (isInProgress) const LinearProgressIndicator(),
@@ -429,8 +453,11 @@ const kAuthReqTypeOidc = 'oidc/';
 
 // call this directly
 Future<bool?> loginDialog() async {
-  var username =
-      TextEditingController(text: UserModel.getLocalUserInfo()?['name'] ?? '');
+  // GSPCOMS: si el técnico dejó marcado "recuérdame", el usuario ya viene puesto.
+  var username = TextEditingController(
+      text: usuarioRecordado().isNotEmpty
+          ? usuarioRecordado()
+          : (UserModel.getLocalUserInfo()?['name'] ?? ''));
   var password = TextEditingController();
   final userFocusNode = FocusNode()..requestFocus();
   Timer(Duration(milliseconds: 100), () => userFocusNode..requestFocus());
@@ -438,6 +465,8 @@ Future<bool?> loginDialog() async {
   String? usernameMsg;
   String? passwordMsg;
   var isInProgress = false;
+  // GSPCOMS: arranca marcado si ya había credenciales guardadas.
+  var recordarme = hayCredencialesGuardadas();
   final RxString curOP = ''.obs;
   // Track hover state for the close icon
   bool isCloseHovered = false;
@@ -538,6 +567,15 @@ Future<bool?> loginDialog() async {
             uuid: await bind.mainGetUuid(),
             autoLogin: true,
             type: HttpType.kAuthReqTypeAccount));
+        // GSPCOMS: solo se guarda si el login SALIÓ BIEN, para no dejar en el
+        // equipo una contraseña equivocada.
+        if (resp.type == HttpType.kAuthResTypeToken && resp.access_token != null) {
+          if (recordarme) {
+            await guardarCredenciales(username.text, password.text);
+          } else {
+            await olvidarCredenciales();
+          }
+        }
         await handleLoginResponse(resp, true, close);
       } on RequestException catch (err) {
         passwordMsg = translate(err.cause);
@@ -643,6 +681,8 @@ Future<bool?> loginDialog() async {
             curOP: curOP,
             onLogin: onLogin,
             userFocusNode: userFocusNode,
+            recordarme: recordarme,
+            onRecordarmeChanged: (v) => setState(() => recordarme = v),
           ),
           thirdAuthWidget(),
         ],

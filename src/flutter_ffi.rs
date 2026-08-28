@@ -16,8 +16,9 @@ use flutter_rust_bridge::{StreamSink, SyncReturn};
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 use hbb_common::allow_err;
 use hbb_common::{
-    config::{self, LocalConfig, PeerConfig, PeerInfoSerde},
+    config::{self, LocalConfig, PeerConfig, PeerInfoSerde, ENCRYPT_MAX_LEN},
     fs, lazy_static, log,
+    password_security::{decrypt_str_or_original, encrypt_str_or_original},
     rendezvous_proto::ConnType,
     ResultType,
 };
@@ -943,6 +944,32 @@ pub fn main_get_login_device_info() -> SyncReturn<String> {
 // reporte de inventario. Discos/GPU/batería se completan del lado Flutter.
 pub fn main_get_hardware_specs() -> SyncReturn<String> {
     SyncReturn(crate::common::get_sysinfo().to_string())
+}
+
+// GSPCOMS: guardar/leer la contraseña del "recuérdame" del técnico.
+//
+// Reusa EXACTAMENTE el mismo mecanismo con el que RustDesk ya persiste sus
+// propias contraseñas (proxy SOCKS, PIN de desbloqueo): la llave se deriva del
+// UUID del equipo, así que el archivo copiado a otra máquina NO se puede abrir.
+// No protege contra alguien que ya tiene acceso a ESA máquina — igual que el
+// resto de secretos que la app guarda.
+//
+// La etiqueta de formato se declara aquí porque la constante equivalente del
+// upstream (PASSWORD_ENC_VERSION) es pub(super) y no se puede importar. Solo
+// tiene que ser consistente entre cifrar y descifrar, que es el caso.
+const GSPCOMS_SECRET_ENC_VERSION: &str = "00";
+
+pub fn main_encrypt_secret(s: String) -> SyncReturn<String> {
+    SyncReturn(encrypt_str_or_original(
+        &s,
+        GSPCOMS_SECRET_ENC_VERSION,
+        ENCRYPT_MAX_LEN,
+    ))
+}
+
+pub fn main_decrypt_secret(s: String) -> SyncReturn<String> {
+    let (plano, _, _) = decrypt_str_or_original(&s, GSPCOMS_SECRET_ENC_VERSION);
+    SyncReturn(plano)
 }
 
 pub fn main_change_id(new_id: String) {
