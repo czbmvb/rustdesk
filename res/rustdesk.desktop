@@ -1,19 +1,19 @@
 [Desktop Entry]
-Name=RustDesk
-GenericName=Remote Desktop
-Comment=Remote Desktop
+Name=GSPSoporte
+GenericName=Soporte remoto
+Comment=Soporte remoto de GSPComms
 Exec=rustdesk %u
-Icon=rustdesk
+Icon=gspsoporte
 Terminal=false
 Type=Application
 StartupNotify=true
 Categories=Network;RemoteAccess;GTK;
-Keywords=internet;linux;dart;rust;remote-control;p2p;teamviewer;rust-lang;rdp;remote-desktop;vnc;
+Keywords=soporte;remoto;gspcoms;gspsoporte;escritorio remoto;remote-desktop;
 Actions=new-window;
 StartupWMClass=rustdesk
 
 X-Desktop-File-Install-Version=0.23
 
 [Desktop Action new-window]
-Name=Open a New Window
+Name=Abrir una ventana nueva
 Exec=rustdesk %u

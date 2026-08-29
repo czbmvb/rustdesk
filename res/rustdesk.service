@@ -1,5 +1,5 @@
 [Unit]
-Description=RustDesk
+Description=GSPSoporte (servicio de soporte remoto GSPComms)
 Requires=network.target
 After=systemd-user-sessions.service
 

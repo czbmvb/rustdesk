@@ -1,10 +1,10 @@
 [Desktop Entry]
-Name=RustDesk
+Name=GSPSoporte
 NoDisplay=true
 MimeType=x-scheme-handler/rustdesk;
 TryExec=rustdesk
 Exec=rustdesk %u
-Icon=rustdesk
+Icon=gspsoporte
 Terminal=false
 Type=Application
 StartupNotify=false
