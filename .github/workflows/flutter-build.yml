@@ -1592,6 +1592,7 @@ jobs:
 
       - name: Publish debian/rpm package
         if: env.UPLOAD_ARTIFACT == 'true'
+        continue-on-error: true  # GSPCOMS: el release de GitHub no existe en el fork; que no bloquee el 'Upload deb'
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
           prerelease: true
